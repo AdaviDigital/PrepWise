@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard-student.html
+Disallow: /dashboard-parent.html
+Disallow: /dashboard-teacher.html
+Disallow: /dashboard-school.html
+
+Sitemap: https://www.prepwise.ng/sitemap.xml
