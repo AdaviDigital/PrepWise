@@ -67,7 +67,32 @@
     <span class="eyebrow gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H8l-4 4V4Z"/></svg> AI Study Assistant</span>
     <h1>A tutor that teaches, not just answers</h1>
     <p>Ask a question in text or voice, upload a textbook page, or request a full revision plan &mdash; PrepWise's AI Study Assistant handles it all, aligned to the Nigerian curriculum.</p>
-    <div class="hero-cta"><a href="register.html" class="btn btn-primary">Try It Free</a><a href="#capabilities" class="btn btn-outline-light">See Capabilities</a></div>
+    <div class="hero-cta"><a href="#live-chat" class="btn btn-primary">Try It Free</a><a href="#capabilities" class="btn btn-outline-light">See Capabilities</a></div>
+  </div>
+</section>
+
+<section class="section" id="live-chat" style="padding-top:56px;padding-bottom:0;">
+  <div class="container">
+    <div class="card" style="padding:0;overflow:hidden;max-width:760px;margin:0 auto;">
+      <div style="background:var(--navy);color:#fff;padding:18px 22px;display:flex;align-items:center;gap:10px;">
+        <div class="icon-tile" style="background:rgba(255,255,255,0.12);color:#fff;width:34px;height:34px;margin:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H8l-4 4V4Z"/></svg></div>
+        <strong style="font-family:var(--font-display);">Ask the PrepWise AI Tutor</strong>
+      </div>
+      <div id="chat-log" style="padding:22px;display:flex;flex-direction:column;gap:14px;max-height:420px;overflow-y:auto;">
+        <div style="background:var(--panel);border-radius:14px 14px 14px 4px;padding:14px 16px;">Hi! Ask me anything &mdash; a WAEC Maths problem, an English grammar rule, a Physics concept, or upload a homework question. I'll teach it step by step.</div>
+      </div>
+      <div id="chat-locked" style="padding:22px;border-top:1px solid var(--line);text-align:center;">
+        <p style="margin-bottom:14px;">Log in or create a free account to start chatting with your AI tutor.</p>
+        <div class="hero-cta" style="justify-content:center;"><a href="register.html" class="btn btn-primary btn-sm">Create Free Account</a><a href="login.html" class="btn btn-secondary btn-sm">Log In</a></div>
+      </div>
+      <form id="chat-form" style="display:none;padding:16px 22px;border-top:1px solid var(--line);gap:10px;align-items:flex-end;" class="grid" >
+        <div style="display:flex;gap:10px;">
+          <input id="chat-input" type="text" placeholder="Type your question\u2026" style="flex:1;padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);font-family:var(--font-body);font-size:.92rem;" required>
+          <button type="submit" class="btn btn-primary" id="chat-send">Send</button>
+        </div>
+        <p class="form-hint" id="chat-status" style="margin:8px 0 0;"></p>
+      </form>
+    </div>
   </div>
 </section>
 
@@ -193,7 +218,69 @@
   </div>
 </footer>
 <button class="back-to-top" aria-label="Back to top">&uarr;</button>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
 <script src="js/script.js"></script>
+<script>
+(function () {
+  let sessionId = null;
+  const log = document.getElementById("chat-log");
+  const locked = document.getElementById("chat-locked");
+  const form = document.getElementById("chat-form");
+  const input = document.getElementById("chat-input");
+  const sendBtn = document.getElementById("chat-send");
+  const status = document.getElementById("chat-status");
 
+  function addBubble(text, from) {
+    const div = document.createElement("div");
+    if (from === "user") {
+      div.style.cssText = "background:var(--emerald);color:#fff;border-radius:14px 14px 4px 14px;padding:14px 16px;align-self:flex-end;max-width:90%;";
+    } else {
+      div.style.cssText = "background:var(--panel);border-radius:14px 14px 14px 4px;padding:14px 16px;max-width:90%;";
+    }
+    div.textContent = text;
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  async function init() {
+    if (!PW.isLoggedIn()) return; // locked state (shown by default) stays visible
+    locked.style.display = "none";
+    form.style.display = "flex";
+    form.style.flexDirection = "column";
+    try {
+      const { session } = await PW.api("/ai/sessions", { method: "POST", body: { title: "AI Tutor chat" } });
+      sessionId = session.id;
+    } catch (err) {
+      status.style.color = "#D64550";
+      status.textContent = "Could not start a chat session: " + err.message;
+    }
+  }
+
+  form?.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const message = input.value.trim();
+    if (!message || !sessionId) return;
+    addBubble(message, "user");
+    input.value = "";
+    sendBtn.disabled = true;
+    status.style.color = "";
+    status.textContent = "Thinking\u2026";
+    try {
+      const { reply } = await PW.api(`/ai/sessions/${sessionId}/messages`, { method: "POST", body: { message } });
+      addBubble(reply.content, "ai");
+      status.textContent = "";
+    } catch (err) {
+      status.style.color = "#D64550";
+      status.textContent = err.message || "The AI tutor could not respond. Please try again.";
+    } finally {
+      sendBtn.disabled = false;
+    }
+  });
+
+  init();
+})();
+</script>
 </body>
 </html>

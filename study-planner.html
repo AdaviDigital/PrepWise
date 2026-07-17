@@ -81,10 +81,10 @@
         <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Choose how many hours you can study per day</li>
       </ul>
       <p>The AI planner then generates a day-by-day countdown, balances revision across subjects, and adjusts automatically as you complete topics or fall behind.</p>
-      <a href="register.html" class="btn btn-emerald">Build My Study Plan</a>
+      <a href="#plan-builder" class="btn btn-emerald">Build My Study Plan</a>
     </div>
     <div class="panel">
-      <div class="dash-topbar"><h3 style="margin:0;">This Week &mdash; WAEC Countdown</h3><span class="pill green">18 weeks left</span></div>
+      <div class="dash-topbar"><h3 style="margin:0;">This Week &mdash; Sample Plan</h3><span class="pill green">Example</span></div>
       <table class="table-simple">
         <thead><tr><th>Day</th><th>Focus</th><th>Duration</th><th>Status</th></tr></thead>
         <tbody>
@@ -95,6 +95,40 @@
           <tr><td>Friday</td><td>Biology &ndash; Genetics</td><td>60 min</td><td><span class="pill red">Pending</span></td></tr>
         </tbody>
       </table>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="background:var(--panel);" id="plan-builder">
+  <div class="container">
+    <div class="section-head"><span class="eyebrow gold">Build your plan</span><h2>Create a real study plan</h2></div>
+    <div id="plan-locked" class="card" style="max-width:520px;margin:0 auto;text-align:center;">
+      <p style="margin-bottom:14px;">Log in or create a free account to build and save a study plan.</p>
+      <div class="hero-cta" style="justify-content:center;"><a href="register.html" class="btn btn-primary btn-sm">Create Free Account</a><a href="login.html" class="btn btn-secondary btn-sm">Log In</a></div>
+    </div>
+    <div id="plan-builder-app" style="display:none;">
+      <div class="card" style="max-width:640px;margin:0 auto 32px;">
+        <form id="plan-form">
+          <div class="form-field"><label for="p-title">Plan title</label><input id="p-title" type="text" value="My WAEC Revision Plan" required></div>
+          <div class="grid grid-2">
+            <div class="form-field"><label for="p-subject">Subject</label><input id="p-subject" type="text" placeholder="e.g. Mathematics" required></div>
+            <div class="form-field"><label for="p-topic">Topic</label><input id="p-topic" type="text" placeholder="e.g. Mensuration" required></div>
+          </div>
+          <div class="grid grid-2">
+            <div class="form-field"><label for="p-when">Date &amp; time</label><input id="p-when" type="datetime-local" required></div>
+            <div class="form-field"><label for="p-duration">Duration (minutes)</label><input id="p-duration" type="number" value="45" min="10" max="240" required></div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="plan-submit">Add to My Plan</button>
+          <p class="form-status form-hint" id="plan-status"></p>
+        </form>
+      </div>
+      <div class="panel" style="max-width:640px;margin:0 auto;">
+        <h3 style="margin-top:0;">My revision items</h3>
+        <table class="table-simple">
+          <thead><tr><th>When</th><th>Focus</th><th>Duration</th></tr></thead>
+          <tbody id="plan-items-body"><tr><td colspan="3" style="color:var(--ink-soft);">No items yet &mdash; add your first revision session above.</td></tr></tbody>
+        </table>
+      </div>
     </div>
   </div>
 </section>
@@ -187,7 +221,91 @@
   </div>
 </footer>
 <button class="back-to-top" aria-label="Back to top">&uarr;</button>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
 <script src="js/script.js"></script>
+<script>
+(function () {
+  if (!PW.isLoggedIn()) return; // locked panel (shown by default) stays visible
 
+  document.getElementById("plan-locked").style.display = "none";
+  document.getElementById("plan-builder-app").style.display = "block";
+
+  let currentPlanId = null;
+  const itemsBody = document.getElementById("plan-items-body");
+
+  function renderItems(items) {
+    if (!items.length) {
+      itemsBody.innerHTML = `<tr><td colspan="3" style="color:var(--ink-soft);">No items yet &mdash; add your first revision session above.</td></tr>`;
+      return;
+    }
+    itemsBody.innerHTML = items.map(function (i) {
+      const when = new Date(i.scheduledFor).toLocaleString("en-NG", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+      return `<tr><td>${when}</td><td>${i.subjectName} &ndash; ${i.topic}</td><td>${i.durationMinutes} min</td></tr>`;
+    }).join("");
+  }
+
+  async function loadExistingPlan() {
+    try {
+      const { plans } = await PW.api("/study-plans");
+      if (plans.length) {
+        currentPlanId = plans[0].id;
+        document.getElementById("p-title").value = plans[0].title;
+        renderItems(plans[0].items);
+      }
+    } catch (err) {
+      PW.toast(err.message || "Could not load your existing study plans.", "error");
+    }
+  }
+
+  document.getElementById("plan-form").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    const submitBtn = document.getElementById("plan-submit");
+    const status = document.getElementById("plan-status");
+    const item = {
+      subjectName: document.getElementById("p-subject").value.trim(),
+      topic: document.getElementById("p-topic").value.trim(),
+      scheduledFor: new Date(document.getElementById("p-when").value).toISOString(),
+      durationMinutes: parseInt(document.getElementById("p-duration").value, 10) || 45,
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Adding\u2026";
+    status.textContent = "";
+
+    try {
+      let items;
+      if (currentPlanId) {
+        // Plan already exists — append this session to it.
+        await PW.api(`/study-plans/${currentPlanId}/items`, { method: "POST", body: item });
+        const { plans } = await PW.api("/study-plans");
+        const plan = plans.find(function (p) { return p.id === currentPlanId; });
+        items = plan.items;
+      } else {
+        // First item — create the plan itself.
+        const { plan } = await PW.api("/study-plans", {
+          method: "POST",
+          body: { title: document.getElementById("p-title").value.trim(), items: [item] },
+        });
+        currentPlanId = plan.id;
+        items = plan.items;
+      }
+      renderItems(items);
+      document.getElementById("p-subject").value = "";
+      document.getElementById("p-topic").value = "";
+      status.style.color = "#16A987";
+      status.textContent = "Added to your plan.";
+    } catch (err) {
+      status.style.color = "#D64550";
+      status.textContent = err.message || "Could not save this item. Please try again.";
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Add to My Plan";
+    }
+  });
+
+  loadExistingPlan();
+})();
+</script>
 </body>
 </html>

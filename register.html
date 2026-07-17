@@ -69,36 +69,83 @@
         <h1 style="font-size:1.6rem;">Create your free account</h1>
         <p>No card required. Upgrade any time.</p>
       </div>
-      <button class="social-btn">Continue with Google</button>
-      <button class="social-btn">Continue with Microsoft</button>
+      <button class="social-btn" disabled title="Configure GOOGLE_CLIENT_ID in the backend and add Google Identity Services to enable this">Continue with Google</button>
+      <button class="social-btn" disabled title="Configure MICROSOFT_CLIENT_ID in the backend and add MSAL.js to enable this">Continue with Microsoft</button>
       <div class="auth-split">or sign up with email</div>
-      <form data-validate onsubmit="return false;">
+      <form id="register-form">
         <div class="grid grid-2">
           <div class="form-field"><label for="r-first">First name</label><input id="r-first" type="text" required></div>
           <div class="form-field"><label for="r-last">Last name</label><input id="r-last" type="text" required></div>
         </div>
         <div class="form-field"><label for="r-role">I am a</label>
           <select id="r-role">
-            <option>Student &ndash; Primary</option>
-            <option>Student &ndash; Secondary</option>
-            <option>Student &ndash; Tertiary</option>
-            <option>Parent</option>
-            <option>Teacher</option>
-            <option>School Administrator</option>
+            <option value="STUDENT" data-level="PRIMARY">Student &ndash; Primary</option>
+            <option value="STUDENT" data-level="SECONDARY" selected>Student &ndash; Secondary</option>
+            <option value="STUDENT" data-level="TERTIARY">Student &ndash; Tertiary</option>
+            <option value="PARENT">Parent</option>
+            <option value="TEACHER">Teacher</option>
+            <option value="STUDENT" data-level="PROFESSIONAL">School Administrator (contact sales after signup)</option>
           </select>
         </div>
         <div class="form-field"><label for="r-email">Email address</label><input id="r-email" type="email" required></div>
         <div class="form-field"><label for="r-pass">Create password</label><input id="r-pass" type="password" required>
-          <div class="form-hint">At least 8 characters, with a number and a symbol.</div>
+          <div class="form-hint">At least 8 characters, with a letter and a number.</div>
         </div>
-        <label class="checkbox-row"><input type="checkbox" required> I agree to the <a href="terms.html">Terms of Service</a> and <a href="privacy.html">Privacy Policy</a>.</label>
-        <button type="submit" class="btn btn-primary btn-block" style="margin-top:18px;">Create Free Account</button>
+        <label class="checkbox-row"><input type="checkbox" id="r-terms" required> I agree to the <a href="terms.html">Terms of Service</a> and <a href="privacy.html">Privacy Policy</a>.</label>
+        <button type="submit" class="btn btn-primary btn-block" id="register-submit" style="margin-top:18px;">Create Free Account</button>
+        <p class="form-status form-hint" id="register-status" role="status"></p>
       </form>
       <p style="text-align:center;margin-top:20px;font-size:.88rem;">Already have an account? <a href="login.html">Log in</a></p>
     </div>
   </div>
 </section>
 </main>
+<script>
+document.getElementById("register-form").addEventListener("submit", async function (e) {
+  e.preventDefault();
+  const submitBtn = document.getElementById("register-submit");
+  const status = document.getElementById("register-status");
+  const roleSelect = document.getElementById("r-role");
+  const selectedOption = roleSelect.options[roleSelect.selectedIndex];
+
+  const body = {
+    firstName: document.getElementById("r-first").value.trim(),
+    lastName: document.getElementById("r-last").value.trim(),
+    email: document.getElementById("r-email").value.trim(),
+    password: document.getElementById("r-pass").value,
+    role: selectedOption.value,
+    level: selectedOption.getAttribute("data-level") || undefined,
+  };
+
+  status.textContent = "";
+  status.style.color = "";
+
+  if (!document.getElementById("r-terms").checked) {
+    status.style.color = "#D64550";
+    status.textContent = "Please agree to the Terms of Service and Privacy Policy to continue.";
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Creating your account\u2026";
+
+  try {
+    const data = await PW.api("/auth/register", { method: "POST", body });
+    PW.setSession(data.user, data.accessToken, data.refreshToken);
+    PW.toast(`Welcome to PrepWise, ${data.user.firstName}!`, "success");
+
+    const params = new URLSearchParams(location.search);
+    const plan = params.get("plan");
+    const dashboards = { STUDENT: "dashboard-student.html", PARENT: "dashboard-parent.html", TEACHER: "dashboard-teacher.html" };
+    window.location.href = plan ? `pricing.html?plan=${plan}` : (dashboards[data.user.role] || "dashboard-student.html");
+  } catch (err) {
+    status.style.color = "#D64550";
+    status.textContent = err.details?.[0]?.message || err.message || "Could not create your account. Please try again.";
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Create Free Account";
+  }
+});
+</script>
 <footer class="site-footer">
   <div class="container">
     <div class="footer-grid">
@@ -161,6 +208,8 @@
   </div>
 </footer>
 <button class="back-to-top" aria-label="Back to top">&uarr;</button>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
 <script src="js/script.js"></script>
 
 </body>

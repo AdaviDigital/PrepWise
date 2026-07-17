@@ -98,6 +98,37 @@
   </div>
 </section>
 
+<section class="section" id="real-exam">
+  <div class="container">
+    <div class="section-head"><span class="eyebrow gold">The real thing</span><h2>Take a graded CBT exam</h2><p>Real questions from the PrepWise question bank, timed, auto-graded, and added to your dashboard and the leaderboard.</p></div>
+
+    <div id="real-exam-locked" class="card" style="max-width:520px;margin:0 auto;text-align:center;">
+      <p style="margin-bottom:14px;">Log in or create a free account to take a graded CBT exam.</p>
+      <div class="hero-cta" style="justify-content:center;"><a href="register.html" class="btn btn-primary btn-sm">Create Free Account</a><a href="login.html" class="btn btn-secondary btn-sm">Log In</a></div>
+    </div>
+
+    <div id="real-exam-list" style="display:none;" class="grid grid-3"></div>
+
+    <div id="real-exam-runner" class="panel" style="display:none;max-width:720px;margin:0 auto;">
+      <div class="dash-topbar">
+        <div>
+          <span class="paper-code mono" id="re-code">CBT / LIVE</span>
+          <p id="re-counter" style="margin:4px 0 0;font-weight:600;color:var(--navy);">Question 1</p>
+        </div>
+        <span class="badge-live">Live</span>
+      </div>
+      <div class="progress-bar" style="margin-bottom:26px;"><span id="re-progress" style="width:0%;"></span></div>
+      <div id="re-q-body"></div>
+      <div id="re-result" class="panel" style="display:none;background:var(--panel);border:none;margin-top:20px;text-align:center;">
+        <p style="margin-bottom:6px;color:var(--ink-soft);">Your score</p>
+        <h2 id="re-score">0 / 0</h2>
+        <p id="re-points" style="color:var(--emerald);font-weight:600;"></p>
+      </div>
+      <button class="btn btn-primary" id="re-next" style="margin-top:22px;">Next Question</button>
+    </div>
+  </div>
+</section>
+
 <section class="section" style="background:var(--panel);">
   <div class="container">
     <div class="section-head"><span class="eyebrow blue">More features</span><h2>Everything a real CBT centre offers</h2></div>
@@ -172,7 +203,105 @@
   </div>
 </footer>
 <button class="back-to-top" aria-label="Back to top">&uarr;</button>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
 <script src="js/script.js"></script>
+<script>
+(function () {
+  const locked = document.getElementById("real-exam-locked");
+  const listEl = document.getElementById("real-exam-list");
+  const runner = document.getElementById("real-exam-runner");
 
+  if (!PW.isLoggedIn()) return; // locked state (shown by default) stays visible
+  locked.style.display = "none";
+
+  let attemptId = null, questions = [], qIndex = 0, totalQuestions = 0;
+
+  async function loadExamList() {
+    listEl.style.display = "grid";
+    listEl.innerHTML = `<p style="color:var(--ink-soft);">Loading available exams\u2026</p>`;
+    try {
+      const { exams } = await PW.api("/exams");
+      if (!exams.length) {
+        listEl.innerHTML = `<div class="card"><p style="margin:0;">No graded exams are published yet. Run <code>npm run seed</code> on the backend to load the demo WAEC Mathematics exam.</p></div>`;
+        return;
+      }
+      listEl.innerHTML = exams.map(function (ex) {
+        return `<div class="card">
+          <span class="paper-code mono">${ex.examBody} / ${ex._count.questions} QUESTIONS</span>
+          <h3>${ex.title}</h3>
+          <p>${ex.durationMinutes} minutes &middot; auto-graded &middot; joins the leaderboard</p>
+          <button class="btn btn-primary btn-sm" data-start-exam="${ex.id}">Start Exam</button>
+        </div>`;
+      }).join("");
+      listEl.querySelectorAll("[data-start-exam]").forEach(function (btn) {
+        btn.addEventListener("click", function () { startExam(btn.getAttribute("data-start-exam")); });
+      });
+    } catch (err) {
+      listEl.innerHTML = `<div class="card"><p style="margin:0;color:#D64550;">${err.message || "Could not load exams."}</p></div>`;
+    }
+  }
+
+  async function startExam(examId) {
+    try {
+      const data = await PW.api(`/exams/${examId}/start`, { method: "POST" });
+      attemptId = data.attempt.id;
+      questions = data.questions;
+      totalQuestions = questions.length;
+      qIndex = 0;
+      document.getElementById("re-code").textContent = `${data.exam.title}`;
+      listEl.style.display = "none";
+      runner.style.display = "block";
+      document.getElementById("re-result").style.display = "none";
+      document.getElementById("re-next").style.display = "inline-flex";
+      renderQuestion();
+      runner.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (err) {
+      PW.toast(err.message || "Could not start this exam.", "error");
+    }
+  }
+
+  function renderQuestion() {
+    const q = questions[qIndex];
+    document.getElementById("re-counter").textContent = `Question ${qIndex + 1} of ${totalQuestions}`;
+    document.getElementById("re-progress").style.width = `${(qIndex / totalQuestions) * 100}%`;
+    const opts = (q.options || []).map(function (o) {
+      return `<label style="display:flex;gap:12px;align-items:center;border:1.5px solid var(--line);border-radius:10px;padding:14px;cursor:pointer;margin-bottom:10px;"><input type="radio" name="re-opt" value="${o.key}" style="width:auto;"> ${o.key}. ${o.text}</label>`;
+    }).join("");
+    document.getElementById("re-q-body").innerHTML = `<h3>${q.prompt}</h3><div style="margin-top:16px;">${opts}</div>`;
+  }
+
+  document.getElementById("re-next").addEventListener("click", async function () {
+    const checked = document.querySelector('input[name="re-opt"]:checked');
+    const q = questions[qIndex];
+    if (checked) {
+      try {
+        await PW.api(`/exams/attempts/${attemptId}/answer`, { method: "POST", body: { questionId: q.id, selectedKey: checked.value } });
+      } catch (err) { /* autosave failures shouldn't block the exam */ }
+    }
+
+    qIndex++;
+    if (qIndex < totalQuestions) {
+      renderQuestion();
+    } else {
+      document.getElementById("re-progress").style.width = "100%";
+      document.getElementById("re-q-body").innerHTML = "";
+      document.getElementById("re-counter").textContent = "Exam complete";
+      document.getElementById("re-next").style.display = "none";
+      try {
+        const { result } = await PW.api(`/exams/attempts/${attemptId}/submit`, { method: "POST" });
+        document.getElementById("re-result").style.display = "block";
+        document.getElementById("re-score").textContent = `${result.score} / ${result.totalQuestions} (${result.percentage}%)`;
+        document.getElementById("re-points").textContent = `+${result.pointsEarned} points earned`;
+        PW.toast("Exam submitted and graded!", "success");
+      } catch (err) {
+        PW.toast(err.message || "Could not submit your exam.", "error");
+      }
+    }
+  });
+
+  loadExamList();
+})();
+</script>
 </body>
 </html>

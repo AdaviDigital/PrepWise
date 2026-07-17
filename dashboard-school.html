@@ -39,15 +39,15 @@
 <div class="dash-topbar">
   <div>
     <span class="paper-code mono">INSTITUTION DASHBOARD</span>
-    <h1 style="margin:6px 0 0;font-size:1.7rem;">Greenfield College</h1>
+    <h1 style="margin:6px 0 0;font-size:1.7rem;" id="welcome-name">Institution Dashboard</h1>
   </div>
   <a href="#" class="btn btn-primary btn-sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c0-3.5 3-6 7-6s7 2.5 7 6"/><circle cx="18" cy="9" r="2.8"/><path d="M15.5 14.2c2.8.4 5 2.5 5 5.8"/></svg> Bulk Import Students</a>
 </div>
 
 <div class="dash-cards">
-  <div class="stat-card"><div class="label">Total students</div><div class="value">1,240</div></div>
-  <div class="stat-card"><div class="label">Active teachers</div><div class="value">58</div></div>
-  <div class="stat-card"><div class="label">CBT exams this term</div><div class="value">32</div></div>
+  <div class="stat-card"><div class="label">Total students</div><div class="value" id="stat-students">&mdash;</div></div>
+  <div class="stat-card"><div class="label">Active teachers</div><div class="value" id="stat-teachers">&mdash;</div></div>
+  <div class="stat-card"><div class="label">Subjects offered</div><div class="value" id="stat-subjects">&mdash;</div></div>
   <div class="stat-card"><div class="label">Average performance</div><div class="value">71%</div><div class="delta">+4% this term</div></div>
 </div>
 
@@ -75,6 +75,21 @@
 
   </main>
 </div>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
 <script src="js/script.js"></script>
+<script>
+if (PW.requireAuth()) {
+  const user = PW.getUser();
+  document.getElementById("welcome-name").textContent = user.school?.name || "Institution Dashboard";
+  PW.api("/dashboard/school").then(function (data) {
+    document.getElementById("stat-students").textContent = (data.stats.studentCount ?? 0).toLocaleString();
+    document.getElementById("stat-teachers").textContent = (data.stats.teacherCount ?? 0).toLocaleString();
+    document.getElementById("stat-subjects").textContent = data.stats.subjectCount ?? 0;
+  }).catch(function (err) {
+    PW.toast(err.message || "No school is linked to this account yet. Contact PrepWise support to set up your institution.", "error");
+  });
+}
+</script>
 </body>
 </html>

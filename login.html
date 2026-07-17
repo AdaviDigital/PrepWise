@@ -69,24 +69,55 @@
         <h1 style="font-size:1.6rem;">Welcome back</h1>
         <p>Log in to continue your revision.</p>
       </div>
-      <button class="social-btn">Continue with Google</button>
-      <button class="social-btn">Continue with Microsoft</button>
+      <button class="social-btn" disabled title="Configure GOOGLE_CLIENT_ID in the backend and add Google Identity Services to enable this">Continue with Google</button>
+      <button class="social-btn" disabled title="Configure MICROSOFT_CLIENT_ID in the backend and add MSAL.js to enable this">Continue with Microsoft</button>
       <div class="auth-split">or log in with email</div>
-      <form data-validate onsubmit="return false;">
+      <form id="login-form">
         <div class="form-field"><label for="l-email">Email address</label><input id="l-email" type="email" required></div>
         <div class="form-field">
           <label for="l-pass">Password</label>
           <input id="l-pass" type="password" required>
           <div class="form-hint" style="text-align:right;"><a href="#">Forgot password?</a></div>
         </div>
-        <label class="checkbox-row"><input type="checkbox"> Keep me logged in on this device</label>
-        <button type="submit" class="btn btn-primary btn-block" style="margin-top:18px;">Log In</button>
+        <label class="checkbox-row"><input type="checkbox" id="l-remember" checked> Keep me logged in on this device</label>
+        <button type="submit" class="btn btn-primary btn-block" id="login-submit" style="margin-top:18px;">Log In</button>
+        <p class="form-status form-hint" id="login-status" role="status"></p>
       </form>
       <p style="text-align:center;margin-top:20px;font-size:.88rem;">New to PrepWise? <a href="register.html">Create a free account</a></p>
     </div>
   </div>
 </section>
 </main>
+<script>
+document.getElementById("login-form").addEventListener("submit", async function (e) {
+  e.preventDefault();
+  const submitBtn = document.getElementById("login-submit");
+  const status = document.getElementById("login-status");
+  const email = document.getElementById("l-email").value.trim();
+  const password = document.getElementById("l-pass").value;
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Logging in\u2026";
+  status.textContent = "";
+  status.style.color = "";
+
+  try {
+    const data = await PW.api("/auth/login", { method: "POST", body: { email, password } });
+    PW.setSession(data.user, data.accessToken, data.refreshToken);
+    PW.toast(`Welcome back, ${data.user.firstName}!`, "success");
+
+    const params = new URLSearchParams(location.search);
+    const next = params.get("next");
+    const dashboards = { STUDENT: "dashboard-student.html", PARENT: "dashboard-parent.html", TEACHER: "dashboard-teacher.html", SCHOOL_ADMIN: "dashboard-school.html", ADMIN: "dashboard-school.html" };
+    window.location.href = next && next !== "login.html" ? next : (dashboards[data.user.role] || "dashboard-student.html");
+  } catch (err) {
+    status.style.color = "#D64550";
+    status.textContent = err.message || "Could not log in. Please check your details and try again.";
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Log In";
+  }
+});
+</script>
 <footer class="site-footer">
   <div class="container">
     <div class="footer-grid">
@@ -149,6 +180,8 @@
   </div>
 </footer>
 <button class="back-to-top" aria-label="Back to top">&uarr;</button>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
 <script src="js/script.js"></script>
 
 </body>

@@ -97,7 +97,7 @@
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Daily study planner</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Unlimited CBT mocks</li>
         </ul>
-        <a href="register.html" class="btn btn-secondary btn-block">Choose Basic</a>
+        <a href="register.html" class="btn btn-secondary btn-block" data-plan-btn="BASIC">Choose Basic</a>
       </div>
       <div class="price-card featured">
         <span class="tag">MOST POPULAR</span>
@@ -112,7 +112,7 @@
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Offline mode &amp; downloads</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> Gamification &amp; certificates</li>
         </ul>
-        <a href="register.html" class="btn btn-primary btn-block">Start Premium</a>
+        <a href="register.html" class="btn btn-primary btn-block" data-plan-btn="PREMIUM">Start Premium</a>
       </div>
       <div class="price-card">
         <span class="paper-code mono">SCHOOL</span>
@@ -221,7 +221,59 @@
   </div>
 </footer>
 <button class="back-to-top" aria-label="Back to top">&uarr;</button>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
 <script src="js/script.js"></script>
+<script>
+document.querySelectorAll("[data-plan-btn]").forEach(function (btn) {
+  btn.addEventListener("click", async function (e) {
+    const plan = btn.getAttribute("data-plan-btn");
 
+    if (!PW.isLoggedIn()) {
+      // Not logged in yet — send them to create an account first, then
+      // straight back here to continue checkout for the plan they picked.
+      e.preventDefault();
+      window.location.href = `register.html?plan=${plan}`;
+      return;
+    }
+
+    e.preventDefault();
+    const originalText = btn.textContent;
+    btn.textContent = "Redirecting to checkout\u2026";
+    btn.style.pointerEvents = "none";
+    try {
+      const data = await PW.api("/payments/paystack/init", { method: "POST", body: { plan } });
+      window.location.href = data.authorizationUrl;
+    } catch (err) {
+      PW.toast(err.message || "Could not start checkout. Please try again.", "error");
+      btn.textContent = originalText;
+      btn.style.pointerEvents = "";
+    }
+  });
+});
+
+// If the user just signed up with a plan in mind, or is returning from
+// Paystack's redirect, pick up where they left off.
+(async function handlePlanContinuation() {
+  const params = new URLSearchParams(location.search);
+  const plan = params.get("plan");
+  const paymentCallback = params.get("payment") === "callback";
+  const reference = params.get("reference") || params.get("trxref");
+
+  if (paymentCallback && reference) {
+    try {
+      const data = await PW.api(`/payments/paystack/verify/${reference}`);
+      PW.toast(data.status === "SUCCESS" ? "Payment confirmed \u2014 your plan is now active!" : "Payment could not be confirmed. Please contact support if you were charged.", data.status === "SUCCESS" ? "success" : "error");
+    } catch (err) {
+      PW.toast(err.message || "Could not confirm your payment.", "error");
+    }
+    return;
+  }
+
+  if (plan && PW.isLoggedIn()) {
+    PW.toast(`Continuing checkout for the ${plan.charAt(0) + plan.slice(1).toLowerCase()} plan.`, "info");
+  }
+})();
+</script>
 </body>
 </html>

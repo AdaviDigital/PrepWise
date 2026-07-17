@@ -73,13 +73,15 @@
 <section class="section">
   <div class="container">
     <div class="filter-bar">
-      <select aria-label="Examination"><option>All Examinations</option><option>Common Entrance</option><option>BECE</option><option>WAEC</option><option>NECO</option><option>NABTEB</option><option>JAMB UTME</option><option>Post-UTME</option></select>
-      <select aria-label="Subject"><option>All Subjects</option><option>Mathematics</option><option>English</option><option>Physics</option><option>Chemistry</option><option>Biology</option></select>
-      <select aria-label="Year"><option>All Years</option><option>2026</option><option>2025</option><option>2024</option><option>2023</option></select>
-      <select aria-label="Difficulty"><option>All Difficulties</option><option>Easy</option><option>Moderate</option><option>Difficult</option></select>
-      <input type="search" placeholder="Search a topic e.g. Mensuration" aria-label="Search topic">
-      <button class="btn btn-primary btn-sm">Search</button>
+      <select aria-label="Examination" id="qb-exam"><option value="">All Examinations</option><option value="COMMON_ENTRANCE">Common Entrance</option><option value="BECE">BECE</option><option value="WAEC">WAEC</option><option value="NECO">NECO</option><option value="NABTEB">NABTEB</option><option value="JAMB_UTME">JAMB UTME</option><option value="POST_UTME">Post-UTME</option></select>
+      <select aria-label="Subject" id="qb-subject"><option value="">All Subjects</option><option value="mathematics-secondary">Mathematics</option><option value="english-language-secondary">English</option><option value="physics-secondary">Physics</option><option value="chemistry-secondary">Chemistry</option><option value="biology-secondary">Biology</option></select>
+      <select aria-label="Year" id="qb-year"><option value="">All Years</option><option>2026</option><option>2025</option><option>2024</option><option>2023</option></select>
+      <select aria-label="Difficulty" id="qb-difficulty"><option value="">All Difficulties</option><option value="EASY">Easy</option><option value="MEDIUM">Moderate</option><option value="HARD">Difficult</option></select>
+      <input type="search" placeholder="Search a topic e.g. Mensuration" aria-label="Search topic" id="qb-search">
+      <button class="btn btn-primary btn-sm" id="qb-search-btn">Search</button>
     </div>
+
+    <div id="qb-live-results" style="margin-bottom:40px;"></div>
 
     <div class="section-head left"><span class="eyebrow blue">Subjects covered</span><h2>21 subjects across every level</h2></div>
     <div class="chip-row"><span class="chip">English</span><span class="chip">Mathematics</span><span class="chip">Physics</span><span class="chip">Chemistry</span><span class="chip">Biology</span><span class="chip">Economics</span><span class="chip">Government</span><span class="chip">Geography</span><span class="chip">Agricultural Science</span><span class="chip">Commerce</span><span class="chip">Accounting</span><span class="chip">Literature</span><span class="chip">CRS</span><span class="chip">IRS</span><span class="chip">Computer Studies</span><span class="chip">Civic Education</span><span class="chip">History</span><span class="chip">French</span><span class="chip">Yoruba</span><span class="chip">Igbo</span><span class="chip">Hausa</span></div>
@@ -177,7 +179,82 @@
   </div>
 </footer>
 <button class="back-to-top" aria-label="Back to top">&uarr;</button>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
 <script src="js/script.js"></script>
+<script>
+(function () {
+  const resultsEl = document.getElementById("qb-live-results");
+  const btn = document.getElementById("qb-search-btn");
 
+  function optionLabel(select) {
+    return select.options[select.selectedIndex].textContent;
+  }
+
+  async function search() {
+    const params = new URLSearchParams();
+    const examBody = document.getElementById("qb-exam").value;
+    const subject = document.getElementById("qb-subject").value;
+    const year = document.getElementById("qb-year").value;
+    const difficulty = document.getElementById("qb-difficulty").value;
+    if (examBody) params.set("examBody", examBody);
+    if (subject) params.set("subject", subject);
+    if (year) params.set("year", year);
+    if (difficulty) params.set("difficulty", difficulty);
+    params.set("limit", "6");
+
+    resultsEl.innerHTML = `<p style="color:var(--ink-soft);">Searching the question bank\u2026</p>`;
+    try {
+      const { items } = await PW.api(`/questions?${params.toString()}`);
+      if (!items.length) {
+        resultsEl.innerHTML = `<div class="card"><p style="margin:0;">No questions matched those filters yet \u2014 try widening your search. New questions are added to the bank every week.</p></div>`;
+        return;
+      }
+      resultsEl.innerHTML = `<div class="section-head left"><span class="eyebrow blue">Live results</span><h2>${items.length} question${items.length === 1 ? "" : "s"} found</h2></div>` +
+        `<div class="grid">` + items.map(function (q) {
+          const opts = (q.options || []).map(function (o) {
+            return `<label style="display:flex;gap:10px;align-items:center;border:1.5px solid var(--line);border-radius:10px;padding:12px;"><input type="radio" name="q-${q.id}" style="width:auto;"> ${o.key}. ${o.text}</label>`;
+          }).join("");
+          return `<div class="card">
+            <span class="paper-code mono">${q.examBody}${q.examYear ? " / " + q.examYear : ""} / ${q.subject?.name || ""}</span>
+            <h3>${q.prompt}</h3>
+            <div class="grid grid-2" style="margin:16px 0;">${opts}</div>
+            <button class="btn btn-secondary btn-sm" data-explain="${q.id}">Show AI Explanation</button>
+            <div class="ai-explanation" id="explain-${q.id}" style="display:none;margin-top:14px;background:rgba(22,169,135,0.08);border-radius:10px;padding:14px 16px;color:var(--ink-soft);"></div>
+          </div>`;
+        }).join("") + `</div>`;
+
+      resultsEl.querySelectorAll("[data-explain]").forEach(function (b) {
+        b.addEventListener("click", async function () {
+          const id = b.getAttribute("data-explain");
+          const box = document.getElementById(`explain-${id}`);
+          if (!PW.isLoggedIn()) {
+            box.style.display = "block";
+            box.innerHTML = `Please <a href="login.html">log in</a> or <a href="register.html">create a free account</a> to see the AI explanation.`;
+            return;
+          }
+          b.disabled = true;
+          b.textContent = "Loading\u2026";
+          try {
+            const { explanation } = await PW.api(`/ai/questions/${id}/explain`, { method: "POST" });
+            box.style.display = "block";
+            box.innerHTML = `<strong style="color:var(--emerald);">AI Explanation:</strong> ${explanation}`;
+          } catch (err) {
+            PW.toast(err.message || "Could not load the explanation.", "error");
+          } finally {
+            b.disabled = false;
+            b.textContent = "Show AI Explanation";
+          }
+        });
+      });
+    } catch (err) {
+      resultsEl.innerHTML = `<div class="card"><p style="margin:0;color:#D64550;">${err.message || "Could not load the question bank right now."}</p></div>`;
+    }
+  }
+
+  btn.addEventListener("click", search);
+  document.getElementById("qb-search").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); search(); } });
+})();
+</script>
 </body>
 </html>

@@ -38,20 +38,20 @@
     
 <div class="dash-topbar">
   <div>
-    <span class="paper-code mono">STUDENT / SS3 / MATHEMATICS TRACK</span>
-    <h1 style="margin:6px 0 0;font-size:1.7rem;">Welcome back, Adaeze</h1>
+    <span class="paper-code mono" id="dash-breadcrumb">STUDENT DASHBOARD</span>
+    <h1 style="margin:6px 0 0;font-size:1.7rem;" id="welcome-name">Welcome back</h1>
   </div>
   <div style="display:flex;gap:12px;align-items:center;">
-    <span class="pill green">18 weeks to WAEC</span>
+    <span class="pill green" id="streak-pill">&mdash; day streak</span>
     <a href="ai-assistant.html" class="btn btn-primary btn-sm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H8l-4 4V4Z"/></svg> Ask AI Tutor</a>
   </div>
 </div>
 
 <div class="dash-cards">
-  <div class="stat-card"><div class="label">XP this week</div><div class="value">1,240</div><div class="delta">+320 vs last week</div></div>
-  <div class="stat-card"><div class="label">Study streak</div><div class="value">12 days</div><div class="delta">Personal best</div></div>
-  <div class="stat-card"><div class="label">CBT average</div><div class="value">78%</div><div class="delta">+6% this month</div></div>
-  <div class="stat-card"><div class="label">Predicted WAEC score</div><div class="value">A1&ndash;B2</div><div class="delta">Mathematics</div></div>
+  <div class="stat-card"><div class="label">Total XP</div><div class="value" id="stat-xp">&mdash;</div><div class="delta">Keep going!</div></div>
+  <div class="stat-card"><div class="label">Study streak</div><div class="value" id="stat-streak">&mdash;</div><div class="delta">Personal best</div></div>
+  <div class="stat-card"><div class="label">CBT average</div><div class="value" id="stat-cbt-avg">&mdash;</div><div class="delta" id="stat-exams-taken">No exams yet</div></div>
+  <div class="stat-card"><div class="label">Points earned</div><div class="value" id="stat-points">&mdash;</div><div class="delta">From CBT practice</div></div>
 </div>
 
 <div class="grid grid-2">
@@ -67,30 +67,81 @@
     <div class="progress-bar"><span style="width:58%;"></span></div>
   </div>
   <div class="panel">
-    <h3 style="margin-top:0;">Today's study plan</h3>
+    <h3 style="margin-top:0;">Upcoming revision</h3>
     <table class="table-simple">
-      <thead><tr><th>Time</th><th>Focus</th><th>Status</th></tr></thead>
-      <tbody>
-        <tr><td>7:00 AM</td><td>Mathematics &ndash; Mensuration</td><td><span class="pill green">Done</span></td></tr>
-        <tr><td>4:00 PM</td><td>English &ndash; Comprehension</td><td><span class="pill gold">In progress</span></td></tr>
-        <tr><td>6:30 PM</td><td>Physics &ndash; Waves quiz</td><td><span class="pill red">Pending</span></td></tr>
+      <thead><tr><th>When</th><th>Focus</th><th>Status</th></tr></thead>
+      <tbody id="study-plan-body">
+        <tr><td colspan="3" style="color:var(--ink-soft);">No upcoming revision items yet &mdash; <a href="study-planner.html">create a study plan</a>.</td></tr>
       </tbody>
     </table>
   </div>
 </div>
 
 <div class="panel">
+  <h3 style="margin-top:0;">Recent CBT exam attempts</h3>
+  <table class="table-simple">
+    <thead><tr><th>Exam</th><th>Score</th><th>Date</th></tr></thead>
+    <tbody id="recent-attempts-body">
+      <tr><td colspan="3" style="color:var(--ink-soft);">No CBT exams taken yet &mdash; <a href="cbt-exam.html">try one now</a>.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="panel">
   <h3 style="margin-top:0;">Recent achievements</h3>
-  <div class="chip-row">
-    <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 4h8v6a4 4 0 0 1-8 0V4Z"/><path d="M6 4H4v2a4 4 0 0 0 4 4M18 4h2v2a4 4 0 0 1-4 4"/><path d="M12 14v3M9 21h6M10 17h4v4h-4z"/></svg> 7-Day Streak</span>
-    <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 4h8v6a4 4 0 0 1-8 0V4Z"/><path d="M6 4H4v2a4 4 0 0 0 4 4M18 4h2v2a4 4 0 0 1-4 4"/><path d="M12 14v3M9 21h6M10 17h4v4h-4z"/></svg> Mathematics Level 5</span>
-    <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 4h8v6a4 4 0 0 1-8 0V4Z"/><path d="M6 4H4v2a4 4 0 0 0 4 4M18 4h2v2a4 4 0 0 1-4 4"/><path d="M12 14v3M9 21h6M10 17h4v4h-4z"/></svg> First CBT Mock Complete</span>
-    <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 4h8v6a4 4 0 0 1-8 0V4Z"/><path d="M6 4H4v2a4 4 0 0 0 4 4M18 4h2v2a4 4 0 0 1-4 4"/><path d="M12 14v3M9 21h6M10 17h4v4h-4z"/></svg> Top 10 Weekly Leaderboard</span>
+  <div class="chip-row" id="badges-row">
+    <span class="chip" style="color:var(--ink-soft);">Complete CBT exams and keep your streak going to earn badges.</span>
   </div>
 </div>
 
   </main>
 </div>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
 <script src="js/script.js"></script>
+<script>
+if (PW.requireAuth()) {
+  (async function loadDashboard() {
+    const user = PW.getUser();
+    document.getElementById("welcome-name").textContent = `Welcome back, ${user.firstName}`;
+    document.getElementById("dash-breadcrumb").textContent = `STUDENT / ${(user.studentProfile?.level || "SECONDARY")}`;
+
+    try {
+      const { profile, stats, recentAttempts, upcomingRevision } = await PW.api("/dashboard/student");
+
+      document.getElementById("stat-xp").textContent = (stats.xp || 0).toLocaleString();
+      document.getElementById("stat-streak").textContent = `${stats.streakDays || 0} days`;
+      document.getElementById("stat-cbt-avg").textContent = `${stats.averageScore || 0}%`;
+      document.getElementById("stat-exams-taken").textContent = `${stats.examsTaken || 0} exams taken`;
+      document.getElementById("stat-points").textContent = (stats.points || 0).toLocaleString();
+      document.getElementById("streak-pill").textContent = `${stats.streakDays || 0} day streak`;
+
+      if (upcomingRevision?.length) {
+        document.getElementById("study-plan-body").innerHTML = upcomingRevision.map(function (item) {
+          const when = new Date(item.scheduledFor).toLocaleString("en-NG", { weekday: "short", hour: "numeric", minute: "2-digit" });
+          return `<tr><td>${when}</td><td>${item.subjectName} &ndash; ${item.topic}</td><td><span class="pill gold">Pending</span></td></tr>`;
+        }).join("");
+      }
+
+      if (recentAttempts?.length) {
+        document.getElementById("recent-attempts-body").innerHTML = recentAttempts.map(function (a) {
+          const pct = a.totalQuestions ? Math.round((a.score / a.totalQuestions) * 100) : 0;
+          const pillClass = pct >= 70 ? "green" : pct >= 50 ? "gold" : "red";
+          const date = a.submittedAt ? new Date(a.submittedAt).toLocaleDateString("en-NG") : "\u2014";
+          return `<tr><td>${a.cbtExam?.title || "CBT Exam"}</td><td><span class="pill ${pillClass}">${a.score}/${a.totalQuestions} (${pct}%)</span></td><td>${date}</td></tr>`;
+        }).join("");
+      }
+
+      if (profile?.badges?.length) {
+        document.getElementById("badges-row").innerHTML = profile.badges.map(function (b) {
+          return `<span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 4h8v6a4 4 0 0 1-8 0V4Z"/><path d="M6 4H4v2a4 4 0 0 0 4 4M18 4h2v2a4 4 0 0 1-4 4"/><path d="M12 14v3M9 21h6M10 17h4v4h-4z"/></svg> ${b.title}</span>`;
+        }).join("");
+      }
+    } catch (err) {
+      PW.toast(err.message || "Could not load your dashboard data.", "error");
+    }
+  })();
+}
+</script>
 </body>
 </html>

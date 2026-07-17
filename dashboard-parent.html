@@ -39,12 +39,18 @@
 <div class="dash-topbar">
   <div>
     <span class="paper-code mono">PARENT DASHBOARD</span>
-    <h1 style="margin:6px 0 0;font-size:1.7rem;">Good afternoon, Mrs. Adeyemi</h1>
+    <h1 style="margin:6px 0 0;font-size:1.7rem;" id="welcome-name">Welcome back</h1>
   </div>
-  <select aria-label="Select child" style="padding:10px 14px;border-radius:8px;border:1.5px solid var(--line);">
-    <option>Adaeze Adeyemi &ndash; SS3</option>
-    <option>Emeka Adeyemi &ndash; JSS2</option>
-  </select>
+</div>
+
+<div class="panel" id="children-panel">
+  <h3 style="margin-top:0;">Your linked children</h3>
+  <table class="table-simple">
+    <thead><tr><th>Name</th><th>Level</th><th>Points</th><th>Streak</th></tr></thead>
+    <tbody id="children-body">
+      <tr><td colspan="4" style="color:var(--ink-soft);">No children linked to your account yet. Contact PrepWise support to link a child's account to yours.</td></tr>
+    </tbody>
+  </table>
 </div>
 
 <div class="dash-cards">
@@ -78,6 +84,23 @@
 
   </main>
 </div>
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
 <script src="js/script.js"></script>
+<script>
+if (PW.requireAuth()) {
+  const user = PW.getUser();
+  document.getElementById("welcome-name").textContent = `Welcome back, ${user.firstName}`;
+  PW.api("/dashboard/parent").then(function (data) {
+    if (data.children?.length) {
+      document.getElementById("children-body").innerHTML = data.children.map(function (c) {
+        return `<tr><td>${c.name}</td><td>${c.classLabel || c.level}</td><td>${(c.points || 0).toLocaleString()}</td><td>${c.streakDays || 0} days</td></tr>`;
+      }).join("");
+    }
+  }).catch(function (err) {
+    PW.toast(err.message || "Could not load your children's data.", "error");
+  });
+}
+</script>
 </body>
 </html>
